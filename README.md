@@ -1,4 +1,4 @@
-# buscamercadolivre
+# busca-mercado-livre
 
 Script em Python para buscar produtos no **Mercado Livre (Brasil)** diretamente pelo terminal, usando a API pública do Mercado Livre. Sem dependências externas — só biblioteca padrão.
 
@@ -19,28 +19,28 @@ Nenhuma dependência de terceiros é necessária.
 ## Instalação
 
 ```bash
-git clone https://github.com/vdonoladev/busca_ml.git
-cd busca_ml
-chmod +x busca_ml.py
+git clone https://github.com/vdonoladev/busca-mercado-livre.git
+cd busca-mercado-livre
+chmod +x buscamercadolivre.py
 ```
 
 ## Uso
 
 ```bash
-python3 busca_ml.py "PRODUTO"
+python3 buscamercadolivre.py "PRODUTO"
 ```
 
 ### Exemplos
 
 ```bash
 # Busca simples
-python3 busca_ml.py teclado mecânico
+python3 buscamercadolivre.py teclado mecânico
 
 # Limitar a 5 resultados
-python3 busca_ml.py -n 5 "notebook gamer"
+python3 buscamercadolivre.py -n 5 "notebook gamer"
 
 # Ordenar por menor preço
-python3 busca_ml.py -o preco "mouse sem fio"
+python3 buscamercadolivre.py -o preco "mouse sem fio"
 ```
 
 ### Opções
