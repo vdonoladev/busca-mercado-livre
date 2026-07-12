@@ -1,38 +1,88 @@
-import sys
+#!/usr/bin/env python3
+"""
+buscamercadolivre.py
+
+Busca produtos no Mercado Livre (Brasil) via API pública e exibe
+título, preço e link direto de cada resultado no terminal.
+"""
+
+from __future__ import annotations
+
+import argparse
 import json
-import codecs
-import urllib.request
+import sys
+import urllib.error
 import urllib.parse
+import urllib.request
+from dataclasses import dataclass
+
+API_URL = "https://api.mercadolibre.com/sites/MLB/search"
+USER_AGENT = "busca_ml/2.0 (+https://github.com/vdonoladev)"
+TIMEOUT = 10  # segundos
 
 
-def usage():
-    print('Uso: {0} "PRODUTO"'.format(sys.argv[0]))
-    print('Busque um produto por vez')
-    sys.exit(1)
+@dataclass
+class Produto:
+    titulo: str
+    preco: float
+    link: str
+
+    def formatado(self) -> str:
+        preco_fmt = f"R$ {self.preco:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        return f"{self.titulo:<70}{preco_fmt}\n{self.link}\n"
 
 
-def busca(item):
-    url = 'https://api.mercadolibre.com/sites/MLB/search?q={0}'.format(item)
-    opener = urllib.request.build_opener()
-    opener.addheaders = [
-        ('User-agent', "Mozilla/5.0 (Windows; U; Windows NT 6.1; rv:2.2) Gecko/20110201")]
+def buscar_produtos(termo: str, limite: int) -> list[Produto]:
+    """Consulta a API do Mercado Livre e retorna os produtos encontrados."""
+    query = urllib.parse.urlencode({"q": termo, "limit": limite})
+    url = f"{API_URL}?{query}"
 
-    with opener.open(url) as fd:
-        content = fd.read()
-        encoding = fd.info().get_content_charset()
-        content = content.decode(encoding)
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
 
-    dic = json.loads(content)
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+            charset = resp.headers.get_content_charset() or "utf-8"
+            dados = json.loads(resp.read().decode(charset))
+    except urllib.error.HTTPError as e:
+        sys.exit(f"Erro HTTP {e.code} ao consultar a API: {e.reason}")
+    except urllib.error.URLError as e:
+        sys.exit(f"Erro de conexão: {e.reason}")
+    except json.JSONDecodeError:
+        sys.exit("Erro: resposta da API não é um JSON válido.")
 
-    sys.stdout = codecs.getwriter('UTF-8')(sys.stdout.detach())
-    for elem in dic['results']:
-        print('{0:<70}R${1}\n{2}\n'.format(elem['title'],
-                                           elem['price'],
-                                           elem['permalink']))
+    resultados = dados.get("results", [])
+    return [Produto(r["title"], r["price"], r["permalink"]) for r in resultados]
 
 
-if __name__ == '__main__':
-    if len(sys.argv) == 1 or sys.argv[1] in {'-h', '--help'}:
-        usage()
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        prog="busca_ml",
+        description="Busca produtos no Mercado Livre (Brasil) pelo terminal.",
+    )
+    parser.add_argument("produto", nargs="+", help="nome do produto a buscar")
+    parser.add_argument(
+        "-n", "--limit", type=int, default=10,
+        help="número máximo de resultados (padrão: 10)",
+    )
+    parser.add_argument(
+        "-o", "--ordenar", choices=["preco", "relevancia"], default="relevancia",
+        help="critério de ordenação dos resultados",
+    )
+    args = parser.parse_args()
 
-    busca(urllib.parse.quote_plus(' '.join(sys.argv[1:])))
+    termo = " ".join(args.produto)
+    produtos = buscar_produtos(termo, args.limit)
+
+    if not produtos:
+        print(f'Nenhum resultado encontrado para "{termo}".')
+        return
+
+    if args.ordenar == "preco":
+        produtos.sort(key=lambda p: p.preco)
+
+    for produto in produtos:
+        print(produto.formatado())
+
+
+if __name__ == "__main__":
+    main()
